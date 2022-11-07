@@ -121,6 +121,46 @@ namespace EBanking.Console.DataAccessLayer
                 Password = reader.GetString(4)
             };
         }
+    
+        private static  async Task<Currency> CreateCurrency(Currency currency)
+        {
+
+            var connection = new SqlConnection(CONNECTION_STRING);
+
+            await connection.OpenAsync();
+            var transanction = (SqlTransaction)await connection.BeginTransactionAsync();
+
+            try
+            {
+                var command = connection.CreateCommand();
+                command.Transaction = transanction;
+                command.CommandText = "insert into [dbo].[Currency](ID, name, code) output inserted.ID values (@name, @code)";
+                command.Parameters.AddWithValue("@name", currency.name);
+                command.Parameters.AddWithValue("@code", currency.code);
+
+                var id = (int?)(await command.ExecuteScalarAsync());
+
+                if (id.HasValue == false)
+                    throw new Exception("Error creating Currency.");
+
+                await transanction.CommitAsync();
+                currency.Id = id.Value;
+                return currency;
+            }
+            catch
+            {
+                await transanction.RollbackAsync();
+                throw;
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+
+
+        }
+    
+    
     }
 
 
